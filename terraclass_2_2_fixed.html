@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TerraClass 2.0 | Global 3D Atlas</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{--bg:#08111e;--panel:#101d2e;--panel2:#17263b;--text:#eaf2ff;--muted:#9eb0c8;--line:#293c56;--accent:#49d1bd}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif}
+header{height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#0c1929;border-bottom:1px solid var(--line)}
+.brand{font-weight:bold;font-size:19px;display:flex;gap:10px;align-items:center}.orb{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(140deg,#5ce0c6,#2267a8)}
+small{color:var(--muted);font-size:10px;font-weight:normal}.tools{display:flex;gap:7px}.btn{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 11px;cursor:pointer}.btn.active{border-color:var(--accent);color:var(--accent)}
+main{height:calc(100vh - 62px);display:grid;grid-template-columns:320px 1fr;direction:ltr}.side{direction:rtl;overflow:auto;background:var(--panel);padding:14px;border-left:1px solid var(--line)}.view{position:relative;min-width:0;background:#06101b}#map,#globe{position:absolute;inset:0;width:100%;height:100%}#globe{display:none}.search{display:flex;gap:6px}.search input{min-width:0;flex:1;background:#091525;border:1px solid var(--line);border-radius:8px;color:white;padding:10px}.search button{background:var(--accent);color:#06201c;border:0;border-radius:8px;padding:0 13px}
+h3{font-size:14px;margin:16px 0 8px}.muted{font-size:11px;color:var(--muted);line-height:1.9}.group{border:1px solid var(--line);border-radius:10px;margin:8px 0;overflow:hidden}.gt{padding:10px;background:var(--panel2);font-size:13px;font-weight:bold;cursor:pointer}.items{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:10px}.layer{font-size:12px;display:flex;align-items:center;gap:8px;min-height:34px;padding:5px 3px;cursor:pointer;touch-action:manipulation}.layer input{accent-color:var(--accent);width:19px;height:19px;flex:0 0 19px;cursor:pointer}.base{display:flex;gap:6px;flex-wrap:wrap}.base .btn{font-size:11px}.status{padding:10px;background:#091525;border:1px solid var(--line);border-radius:9px;font-size:11px;color:var(--muted);line-height:1.8;margin-top:12px}.float{position:absolute;z-index:500;top:12px;left:12px;background:#0b1929eF;border:1px solid #3a526f;border-radius:10px;padding:9px 12px;font-size:11px;line-height:1.8;max-width:260px}.info{position:absolute;z-index:600;bottom:15px;right:15px;max-width:330px;width:calc(100% - 30px);background:#101d2ef2;border:1px solid #405675;border-radius:12px;padding:13px;display:none}.info h4{margin:0 0 7px}.info p{font-size:12px;line-height:1.8;color:#c8d6e9}.info button{float:left;background:none;color:white;border:0;font-size:20px}.globezoom{position:absolute;z-index:550;left:12px;bottom:18px;display:none;flex-direction:column;gap:7px}.globezoom button{width:42px;height:42px;border-radius:10px;background:#10243aee;border:1px solid #52708f;color:white;font-size:24px;box-shadow:0 3px 12px #0005}.profile{height:105px;background:#091525;border:1px solid var(--line);border-radius:9px;padding:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center}.profile canvas{max-width:100%}
+@media(max-width:760px){main{height:auto;min-height:calc(100vh - 62px);grid-template-columns:1fr;grid-template-rows:48vh auto}.view{grid-row:1;height:48vh}.side{grid-row:2;max-height:none;border:0;border-top:1px solid var(--line)}header{padding:0 9px}.brand{font-size:16px}.tools .btn{font-size:10px;padding:7px}}
+</style></head>
+<body>
+<header><div class="brand"><div class="orb">🌐</div><div>TerraClass <small style="display:block">GLOBAL 3D ATLAS · نسخه ۲.۰</small></div></div><div class="tools"><button class="btn active" id="flatBtn">نقشه ۲بعدی</button><button class="btn" id="globeBtn">کره ۳بعدی</button><button class="btn" id="themeBtn">☼</button></div></header>
+<main><section class="view"><div id="map"></div><div id="globe"></div><div class="globezoom" id="globezoom"><button id="gplus">+</button><button id="gminus">−</button><button id="greset">↺</button></div><div class="float">🌍 <b id="viewLabel">نقشه جهانی</b><br>لایه‌ها را از پنل فعال کنید. برای داده‌های بیشتر روی منطقه زوم کنید.</div><div class="info" id="info"><button id="close">×</button><h4 id="ititle">اطلاعات عارضه</h4><p id="ibody"></p></div></section>
+<aside class="side"><div class="search"><input id="search" placeholder="نام مکان، کوه، رودخانه..."><button id="go">جست‌وجو</button></div>
+<h3>🗺️ نقشه پایه</h3><div class="base"><button class="btn active" data-base="street">خیابانی</button><button class="btn" data-base="topo">توپوگرافی</button><button class="btn" data-base="sat">ماهواره‌ای</button></div>
+<h3>🧭 لایه‌های قابل کنترل</h3><div id="groups"></div>
+<h3>📏 پروفایل ارتفاعی مسیر</h3><div class="muted">برای رسم مسیر، دو نقطه روی نقشه دوبار کلیک کنید. این ابزار نمایه نمایشی مسیر را آماده می‌کند؛ برای ارتفاع واقعی باید سرویس ارتفاعی در دسترس باشد.</div><div class="profile" id="profile">دو نقطه روی نقشه انتخاب کنید تا مسیر ساخته شود.</div>
+<div class="status" id="status">آماده. نقشه و داده‌ها با اینترنت بارگذاری می‌شوند.</div>
+<p class="muted">منابع: OpenStreetMap، OpenTopoMap و Esri. پوشش داده‌ها در کشورها یکسان نیست. خطوط لوله و شبکه‌های تأسیساتی فقط در صورت ثبت عمومی و مجاز نمایش داده می‌شوند؛ این ابزار نقشه اجرایی یا ایمنی زیرساخت نیست.</p></aside></main>
+<script>
+const map=L.map('map',{worldCopyJump:true}).setView([22,12],2);
+const base={street:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),topo:L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'© OpenTopoMap'}),sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'})};base.street.addTo(map);
+let globeMode=false,globeInstance=null,chosen=[],pathLine=null;const layers={},layerTokens={},enabledLayers=new Set();let requestQueue=Promise.resolve(),mapRefreshTimer=null;
+const groups=[
+['⛰️ عوارض طبیعی',[['peaks','قله‌ها و کوه‌ها','node["natural"="peak"]'],['rivers','رودخانه‌ها و جویبارها','way["waterway"~"river|stream"]'],['lakes','دریاچه‌ها','way["natural"~"water|lake"]'],['forests','جنگل‌ها','way["landuse"="forest"]'],['wetlands','تالاب‌ها','way["natural"="wetland"]'],['volcanoes','آتشفشان‌ها','node["natural"="volcano"]']]],
+['💧 آب و هیدرولوژی',[['canals','کانال‌ها','way["waterway"="canal"]'],['dams','سدها','way["waterway"="dam"]'],['reservoirs','مخازن آب','way["landuse"="reservoir"]'],['waterworks','تأسیسات آب','node["man_made"="water_works"]']]],
+['🏗️ زیرساخت و حمل‌ونقل',[['roads','جاده‌های اصلی','way["highway"~"motorway|trunk|primary|secondary"]'],['rail','راه‌آهن','way["railway"="rail"]'],['bridges','پل‌ها','way["bridge"="yes"]'],['pipelines','خطوط لوله ثبت‌شده','way["man_made"="pipeline"]'],['power','خطوط برق','way["power"="line"]']]],
+['🌐 داده‌های جغرافیایی',[['boundaries','مرزهای اداری','relation["boundary"="administrative"]["admin_level"~"2|4"]'],['buildings','ساختمان‌ها','way["building"]'],['parks','پارک‌ها','way["leisure"="park"]']]]
+];
+const colors={peaks:'#c77b42',rivers:'#35aee0',lakes:'#258bd0',forests:'#33895c',wetlands:'#58b29b',volcanoes:'#e45c45',canals:'#32c1ce',dams:'#799ab5',reservoirs:'#258bd0',waterworks:'#48b9d0',roads:'#f0a44b',rail:'#d4d9df',bridges:'#f2d36a',pipelines:'#ff7835',power:'#e9d54c',boundaries:'#a48be1',buildings:'#aab6c5',parks:'#50a96a'};
+const host=document.getElementById('groups');
+groups.forEach(([name,items])=>{let g=document.createElement('div');g.className='group';let h=document.createElement('div');h.className='gt';h.textContent=name;let box=document.createElement('div');box.className='items';h.onclick=()=>box.hidden=!box.hidden;items.forEach(([id,label,q])=>{let l=document.createElement('label');l.className='layer';l.innerHTML=`<input type="checkbox" data-id="${id}"><span style="color:${colors[id]}">●</span>${label}`;box.append(l)});g.append(h,box);host.append(g)});
+function status(s){document.getElementById('status').textContent=s}
+function popup(el){return Object.entries(el.tags||{}).slice(0,10).map(([k,v])=>`${k}: ${v}`).join('<br>')||'لا توجد تفاصيل مسجلة.'}
+function style(id,el){let c=colors[id];if(el.type==='node')return{radius:5,color:c,fillColor:c,fillOpacity:.9};return{color:c,weight:['rivers','canals'].includes(id)?3:2,fillColor:c,fillOpacity:.2}}
+function renderFeature(id,e){if(e.type==='node'&&e.lat)return L.circleMarker([e.lat,e.lon],style(id,e));if(!e.geometry)return null;let pts=e.geometry.map(p=>[p.lat,p.lon]);if(['lakes','forests','wetlands','reservoirs','buildings','parks'].includes(id)&&pts.length>2)return L.polygon(pts,style(id,e));return L.polyline(pts,style(id,e))}
+async function fetchLayer(id,selector){
+ if(map.getZoom()<5){status('لایه روشن است؛ برای بارگذاری داده‌ها روی نقشه بیشتر زوم کنید (حداقل سطح ۵).');return}
+ const token=(layerTokens[id]||0)+1;layerTokens[id]=token;
+ const bounds=map.getBounds(),bb=[bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast()].join(',');
+ const q=`[out:json][timeout:35];(${selector}(${bb}););out body geom 1200;`;
+ status('در صف دریافت داده‌های '+id+'…');
+ requestQueue=requestQueue.then(async()=>{
+  if(!enabledLayers.has(id)||layerTokens[id]!==token)return;
+  status('در حال دریافت لایه '+id+'…');
+  let response=null;
+  for(const endpoint of ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']){
+   try{response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:q});if(response.ok)break}catch(err){}
+  }
+  if(!response||!response.ok)throw new Error('Overpass unavailable');
+  const data=await response.json();
+  if(!enabledLayers.has(id)||layerTokens[id]!==token)return;
+  if(layers[id])map.removeLayer(layers[id]);
+  const group=L.featureGroup();
+  data.elements.forEach(el=>{const feature=renderFeature(id,el);if(feature){feature.bindPopup(`<div style="font-size:12px;line-height:1.7;max-width:230px"><b>${id}</b><hr>${popup(el)}</div>`);group.addLayer(feature)}});
+  layers[id]=group;group.addTo(map);
+  status(`لایه ${id}: ${group.getLayers().length.toLocaleString('fa-IR')} عارضه نمایش داده شد.`);
+ }).catch(err=>{if(enabledLayers.has(id)&&layerTokens[id]===token)status('بارگذاری لایه '+id+' ناموفق بود. سرویس داده ممکن است شلوغ باشد؛ دوباره تلاش کنید.')});
+}
+function refreshEnabledLayers(){
+ clearTimeout(mapRefreshTimer);
+ mapRefreshTimer=setTimeout(()=>{
+  if(map.getZoom()<5){status('لایه‌ها روشن هستند؛ برای دیدن عوارض روی منطقه زوم کنید.');return}
+  enabledLayers.forEach(id=>{const selector=groups.flatMap(g=>g[1]).find(x=>x[0]===id)?.[2];if(selector)fetchLayer(id,selector)});
+ },700);
+}
+host.addEventListener('change',e=>{
+ const el=e.target;if(!el.matches('[data-id]'))return;
+ const id=el.dataset.id,selector=groups.flatMap(g=>g[1]).find(x=>x[0]===id)?.[2];
+ if(el.checked){enabledLayers.add(id);if(selector)fetchLayer(id,selector)}
+ else{enabledLayers.delete(id);layerTokens[id]=(layerTokens[id]||0)+1;if(layers[id]){map.removeLayer(layers[id]);delete layers[id]}status('لایه خاموش شد.')}
+});
+map.on('moveend zoomend',refreshEnabledLayers);
+document.querySelectorAll('[data-base]').forEach(btn=>btn.onclick=()=>{Object.values(base).forEach(x=>map.removeLayer(x));base[btn.dataset.base].addTo(map);document.querySelectorAll('[data-base]').forEach(x=>x.classList.toggle('active',x===btn))});
+document.getElementById('go').onclick=async()=>{let q=document.getElementById('search').value.trim();if(!q)return;status('در حال جست‌وجو…');try{let r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(q)),a=await r.json();if(!a.length){status('مکان پیدا نشد.');return}map.setView([+a[0].lat,+a[0].lon],11);L.marker([+a[0].lat,+a[0].lon]).addTo(map).bindPopup(a[0].display_name).openPopup();status(a[0].display_name)}catch{status('جست‌وجو ناموفق بود.')}};
+document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('go').click()});
+map.on('click',e=>{document.getElementById('ititle').textContent='مختصات نقطه';document.getElementById('ibody').textContent=`عرض: ${e.latlng.lat.toFixed(5)} | طول: ${e.latlng.lng.toFixed(5)}. لایه‌های فعال را برای مشاهده عوارض بررسی کنید.`;document.getElementById('info').style.display='block'});
+document.getElementById('close').onclick=()=>document.getElementById('info').style.display='none';
+map.on('dblclick',e=>{chosen.push(e.latlng);if(chosen.length>2)chosen=[];if(pathLine)map.removeLayer(pathLine);if(chosen.length===2){pathLine=L.polyline(chosen,{color:'#e7bd56',weight:4,dashArray:'7 7'}).addTo(map);let dist=map.distance(chosen[0],chosen[1])/1000;document.getElementById('profile').textContent=`مسیر مستقیم: ${dist.toFixed(2)} کیلومتر · ارتفاع واقعی بدون سرویس DEM در دسترس نیست.`;chosen=[]}else document.getElementById('profile').textContent='نقطه اول ثبت شد؛ دوباره روی نقشه دوبار کلیک کنید.'});
+function init3DGlobe(){
+ if(globeInstance)return;
+ const host=document.getElementById('globe');
+ if(!window.THREE){status('کتابخانه سه‌بعدی بارگذاری نشد. اینترنت یا CDN را بررسی کنید.');return}
+ const THREE=window.THREE,scene=new THREE.Scene();
+ const camera=new THREE.PerspectiveCamera(45,host.clientWidth/Math.max(host.clientHeight,1),.1,100);camera.position.z=3.2;
+ const renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'low-power'});
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));renderer.setSize(host.clientWidth,host.clientHeight);renderer.setClearColor(0x06101b,1);
+ host.innerHTML='';host.appendChild(renderer.domElement);
+ const globe=new THREE.Group();scene.add(globe);
+ const material=new THREE.MeshPhongMaterial({color:0xffffff,shininess:4});
+ globe.add(new THREE.Mesh(new THREE.SphereGeometry(1,48,48),material));
+ scene.add(new THREE.AmbientLight(0xffffff,1.25));
+ const sun=new THREE.DirectionalLight(0xffffff,1.0);sun.position.set(4,2,5);scene.add(sun);
+ const loader=new THREE.TextureLoader();loader.setCrossOrigin('anonymous');
+ loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',tex=>{tex.generateMipmaps=true;tex.minFilter=THREE.LinearMipmapLinearFilter;material.map=tex;material.needsUpdate=true;status('کره سه‌بعدی آماده است؛ با انگشت بچرخان و زوم کن.')},undefined,()=>status('بافت زمین بارگذاری نشد؛ کره با رنگ پایه نمایش داده می‌شود.'));
+ let dragging=false,px=0,py=0,rotX=0,rotY=0,auto=true,lastRender=0,pointers=new Map(),pinchStart=0,pinchDistance=0;
+ const el=renderer.domElement;el.style.width='100%';el.style.height='100%';el.style.cursor='grab';el.style.touchAction='none';
+ el.addEventListener('pointerdown',e=>{pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1){dragging=true;auto=false;px=e.clientX;py=e.clientY;el.setPointerCapture(e.pointerId);el.style.cursor='grabbing'}else if(pointers.size===2){const pts=[...pointers.values()];pinchDistance=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);pinchStart=camera.position.z;dragging=false}});
+ el.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&dragging){rotY+=(e.clientX-px)*.005;rotX+=(e.clientY-py)*.005;rotX=Math.max(-1.4,Math.min(1.4,rotX));px=e.clientX;py=e.clientY}else if(pointers.size===2){const pts=[...pointers.values()],d=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);camera.position.z=Math.max(1.55,Math.min(6,pinchStart*pinchDistance/Math.max(d,1)))}});
+ const endPointer=e=>{pointers.delete(e.pointerId);if(pointers.size===0){dragging=false;el.style.cursor='grab'}else if(pointers.size===1){const p=[...pointers.values()][0];px=p.x;py=p.y;dragging=true}};
+ el.addEventListener('pointerup',endPointer);el.addEventListener('pointercancel',endPointer);
+ el.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(1.55,Math.min(6,camera.position.z+e.deltaY*.0025))},{passive:false});
+ const resize=()=>{const w=host.clientWidth,h=Math.max(host.clientHeight,1);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)};
+ let frame=0;const animate=now=>{frame=requestAnimationFrame(animate);if(now-lastRender<33)return;lastRender=now;if(auto&&!dragging)rotY+=.0012;globe.rotation.x=rotX;globe.rotation.y=rotY;renderer.render(scene,camera)};
+ frame=requestAnimationFrame(animate);
+ globeInstance={camera,resize,zoomIn(){camera.position.z=Math.max(1.55,camera.position.z-.35)},zoomOut(){camera.position.z=Math.min(6,camera.position.z+.35)},reset(){camera.position.z=3.2;rotX=0;rotY=0;auto=true}};
+}
+function switchView(globe){
+ globeMode=globe;
+ document.getElementById('map').style.display=globe?'none':'block';
+ document.getElementById('globe').style.display=globe?'block':'none';
+ document.getElementById('flatBtn').classList.toggle('active',!globe);
+ document.getElementById('globeBtn').classList.toggle('active',globe);
+ document.getElementById('viewLabel').textContent=globe?'کره زمین سه‌بعدی':'نقشه جهانی';document.getElementById('globezoom').style.display=globe?'flex':'none';
+ if(globe){init3DGlobe();if(globeInstance)globeInstance.resize()}
+}
+document.getElementById('flatBtn').onclick=()=>switchView(false);document.getElementById('globeBtn').onclick=()=>switchView(true);
+document.getElementById('themeBtn').onclick=()=>{document.body.classList.toggle('light');let l=document.body.classList.contains('light');document.documentElement.style.setProperty('--bg',l?'#edf3f8':'#08111e');document.documentElement.style.setProperty('--panel',l?'#fff':'#101d2e');document.documentElement.style.setProperty('--panel2',l?'#e5edf5':'#17263b');document.documentElement.style.setProperty('--text',l?'#142238':'#eaf2ff');document.documentElement.style.setProperty('--muted',l?'#56677e':'#9eb0c8');document.documentElement.style.setProperty('--line',l?'#cbd6e2':'#293c56')};
+document.getElementById('gplus').onclick=()=>globeInstance&&globeInstance.zoomIn();document.getElementById('gminus').onclick=()=>globeInstance&&globeInstance.zoomOut();document.getElementById('greset').onclick=()=>globeInstance&&globeInstance.reset();window.addEventListener('resize',()=>{if(globeInstance)globeInstance.resize()});
+</script></body></html>
